@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  tracker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: bittorrent-tracker
+    command: ["TrackerProcess", "8888"]
+    ports:
+      - "8888:8888"
+    networks:
+      p2p-net:
+        ipv4_address: 172.20.0.2
+
+  peer1001:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: bittorrent-peer-1001
+    command: ["PeerProcess", "1001", "tracker", "8888"]
+    depends_on:
+      - tracker
+    networks:
+      p2p-net:
+        ipv4_address: 172.20.0.11
+
+  peer1002:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: bittorrent-peer-1002
+    command: ["PeerProcess", "1002", "tracker", "8888"]
+    depends_on:
+      - tracker
+      - peer1001
+    networks:
+      p2p-net:
+        ipv4_address: 172.20.0.12
+
+  peer1003:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: bittorrent-peer-1003
+    command: ["PeerProcess", "1003", "tracker", "8888"]
+    depends_on:
+      - tracker
+      - peer1001
+    networks:
+      p2p-net:
+        ipv4_address: 172.20.0.13
+
+networks:
+  p2p-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

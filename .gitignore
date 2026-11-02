@@ -1,0 +1,15 @@
+# Compiled Java Binaries
+bin/
+*.class
+
+# Runtime Logs
+*.log
+*.log.lck
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Downloaded test artifacts (keep only original seeder peer_1001 file if needed)
+peer_1002/thefile
+peer_1003/thefile
