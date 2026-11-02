@@ -6,7 +6,7 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile
     container_name: bittorrent-tracker
-    command: ["TrackerProcess", "8888"]
+    command: ["TrackerProcess", "8888", "thefile.meta"]
     ports:
       - "8888:8888"
     networks:

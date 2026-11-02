@@ -16,10 +16,12 @@ FROM eclipse-temurin:17-jre-alpine
 
 WORKDIR /app
 
-# Copy compiled binaries
+# Copy compiled binaries and initial metadata/seeder files
 COPY --from=builder /app/bin ./bin
 COPY Common.cfg ./
 COPY PeerInfo.cfg ./
+COPY thefile.meta ./
+COPY peer_1001/ ./peer_1001/
 
 EXPOSE 8888 6001 6002 6003
 
