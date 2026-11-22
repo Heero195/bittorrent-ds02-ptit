@@ -29,6 +29,8 @@ Implementation of a Peer-to-Peer (P2P) file sharing system simulating BitTorrent
 ```
 PeerToPeer-FileSharing/
 ├── README.md                  # Project overview, architecture, and deployment guide
+├── HUONG_DAN_THUYET_TRINH.md   # Cẩm nang thuyết trình & vấn đáp chi tiết cho 3 thành viên
+├── GIAI_PHAU_MA_NGUON.md      # Giải phẫu chi tiết toàn bộ mã nguồn theo 3 thành viên
 ├── TASK_ASSIGNMENT.md         # Detailed group member task assignments & responsibilities
 ├── .env.example               # Sample environment variables configuration
 ├── TrackerProcess.java        # Main entry point for Tracker server

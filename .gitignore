@@ -13,3 +13,7 @@ Thumbs.db
 # Downloaded test artifacts (keep only original seeder peer_1001 file if needed)
 peer_1002/thefile
 peer_1003/thefile
+peer_1002/baocao.txt
+peer_1003/baocao.txt
+peer_1002/tailieu.txt
+peer_1003/tailieu.txt
