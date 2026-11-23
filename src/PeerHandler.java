@@ -168,6 +168,13 @@ public class PeerHandler implements Runnable {
 						int pieceIndex = am.getPieceIndexFromPayload();
 						byte[] pieceData = am.getPieceFromPayload();
 
+						if (this.peerAdmin.getAndClearCorruptChunkIndex(pieceIndex) == pieceIndex) {
+							System.err.println("[FAULT_INJECTION] Simulating transmission noise: corrupting piece #" + pieceIndex + " payload!");
+							if (pieceData != null && pieceData.length > 0) {
+								pieceData[0] = (byte) (~pieceData[0]);
+							}
+						}
+
 						boolean isValidChunk = true;
 						Metadata metadata = this.peerAdmin.getMetadata();
 						if (metadata != null) {
