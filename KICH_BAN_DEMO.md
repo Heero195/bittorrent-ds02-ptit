@@ -147,3 +147,4 @@ Dưới đây là lời thoại chuẩn từng bước để nhóm phối hợp 
 
 #### ❓ Câu hỏi 4: "Nếu ai cũng chỉ mở van cho người tải nhanh thì một máy mới toanh vào mạng sẽ ra sao?"
 * **Trả lời chuẩn:** *"Dạ chính vì vậy hệ thống mới cần thuật toán **Optimistic Unchoke** (Mở van lạc quan). Cứ định kỳ 15 giây, hệ thống chọn ngẫu nhiên 1 peer đang bị nghẽn để mở van cho họ tải. Cơ chế này giúp các nút mới chưa có dữ liệu vẫn có cơ hội nhận được những mảnh đầu tiên để tham gia vào mạng lưới."*
+

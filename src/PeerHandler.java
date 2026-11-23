@@ -151,7 +151,7 @@ public class PeerHandler implements Runnable {
 							int pieceIndex = am.getPieceIndexFromPayload();
 							byte[] rawPiece = this.peerAdmin.readFromFile(pieceIndex);
 
-							if (this.peerAdmin.getCorruptChunkIndex() == pieceIndex) {
+							if (this.peerAdmin.getAndClearCorruptChunkIndex(pieceIndex) == pieceIndex) {
 								System.out.println("[FAULT_INJECTION] Tampering piece " + pieceIndex + " payload before sending to Peer " + this.endPeerID);
 								byte[] corruptPiece = rawPiece.clone();
 								if (corruptPiece.length > 0) {

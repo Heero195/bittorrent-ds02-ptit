@@ -79,6 +79,14 @@ public class PeerAdmin {
 		return corruptChunkIndex;
 	}
 
+	public synchronized int getAndClearCorruptChunkIndex(int pieceIndex) {
+		if (this.corruptChunkIndex == pieceIndex) {
+			this.corruptChunkIndex = -1;
+			return pieceIndex;
+		}
+		return -1;
+	}
+
 	public Metadata getMetadata() {
 		return metadata;
 	}
