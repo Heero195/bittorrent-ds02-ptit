@@ -151,6 +151,11 @@ public class PeerHandler implements Runnable {
 							int pieceIndex = am.getPieceIndexFromPayload();
 							byte[] rawPiece = this.peerAdmin.readFromFile(pieceIndex);
 
+							// Giả lập tốc độ truyền mạng thực tế (300ms / mảnh 32KB) để quan sát tiến độ từng mảnh
+							try {
+								Thread.sleep(300);
+							} catch (InterruptedException ignored) {}
+
 							if (this.peerAdmin.getAndClearCorruptChunkIndex(pieceIndex) == pieceIndex) {
 								System.out.println("[FAULT_INJECTION] Tampering piece " + pieceIndex + " payload before sending to Peer " + this.endPeerID);
 								byte[] corruptPiece = rawPiece.clone();

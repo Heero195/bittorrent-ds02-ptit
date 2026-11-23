@@ -858,8 +858,8 @@ public class WebDashboard {
             "      } catch (e) { console.error(e); }\n" +
             "    }\n" +
             "\n" +
-            "    setInterval(pollStatus, 1000);\n" +
-            "    setInterval(pollEvents, 1500);\n" +
+            "    setInterval(pollStatus, 350);\n" +
+            "    setInterval(pollEvents, 600);\n" +
             "    pollStatus();\n" +
             "    pollEvents();\n" +
             "  </script>\n" +
