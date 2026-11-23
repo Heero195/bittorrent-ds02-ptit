@@ -189,11 +189,16 @@ public class WebDashboard {
                         break;
                     case "clean":
                         stopAll();
+                        try { Thread.sleep(300); } catch (Exception ignored) {}
                         new File("peer_1002/thefile").delete();
                         new File("peer_1003/thefile").delete();
-                        new File("log_peer_1001.log").delete();
-                        new File("log_peer_1002.log").delete();
-                        new File("log_peer_1003.log").delete();
+                        for (int id : new int[]{1001, 1002, 1003}) {
+                            new File("log_peer_" + id + ".log").delete();
+                            new File("log_peer_" + id + ".log.lck").delete();
+                            new File("log_peer_" + id + ".log.1").delete();
+                        }
+                        new File("log_tracker.log").delete();
+                        new File("log_tracker.log.lck").delete();
                         break;
                     default:
                         result = "UNKNOWN_CMD";
@@ -479,8 +484,25 @@ public class WebDashboard {
         activeProcesses.clear();
 
         try {
-            if (System.getProperty("os.name").toLowerCase().contains("win")) {
-                new ProcessBuilder("powershell", "-Command", "Stop-Process -Name java -Force -ErrorAction SilentlyContinue").start();
+            long myPid = ProcessHandle.current().pid();
+            ProcessHandle.current().descendants().forEach(ProcessHandle::destroyForcibly);
+            Process jps = new ProcessBuilder("jps", "-l").start();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(jps.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    line = line.trim();
+                    if (line.contains("TrackerProcess") || line.contains("PeerProcess")) {
+                        String[] parts = line.split("\\s+");
+                        if (parts.length > 0) {
+                            try {
+                                long pid = Long.parseLong(parts[0]);
+                                if (pid != myPid) {
+                                    ProcessHandle.of(pid).ifPresent(ProcessHandle::destroyForcibly);
+                                }
+                            } catch (NumberFormatException ignored) {}
+                        }
+                    }
+                }
             }
         } catch (Exception ignored) {}
     }
@@ -713,6 +735,22 @@ public class WebDashboard {
             "    async function callAction(cmd) {\n" +
             "      try {\n" +
             "        await fetch('/api/action?cmd=' + cmd);\n" +
+            "        if (cmd === 'clean') {\n" +
+            "          const b = document.getElementById('hashBanner');\n" +
+            "          if (b) { b.className = 'hidden rounded-xl p-4 border transition-all'; b.innerHTML = ''; }\n" +
+            "          for (let p of ['1002', '1003']) {\n" +
+            "            const txt = document.getElementById('txt' + p);\n" +
+            "            const bar = document.getElementById('bar' + p);\n" +
+            "            if (txt) txt.innerText = '0/31 (0%)';\n" +
+            "            if (bar) bar.style.width = '0%';\n" +
+            "            for (let i = 0; i < 31; i++) {\n" +
+            "              const box = document.getElementById(`piece_${p}_${i}`);\n" +
+            "              if (box) box.className = 'piece-box bg-slate-800 border border-slate-700/60';\n" +
+            "            }\n" +
+            "          }\n" +
+            "          const tbody = document.getElementById('eventsBody');\n" +
+            "          if (tbody) tbody.innerHTML = '';\n" +
+            "        }\n" +
             "        setTimeout(pollStatus, 400);\n" +
             "        setTimeout(pollEvents, 500);\n" +
             "      } catch (e) { console.error(e); }\n" +
@@ -764,6 +802,16 @@ public class WebDashboard {
             "      } else {\n" +
             "        badge.className = 'px-2 py-0.5 text-[10px] rounded-full bg-slate-800 text-slate-400';\n" +
             "        badge.innerText = 'Offline';\n" +
+            "        if (id === '1001') {\n" +
+            "          btn.className = 'w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded transition flex items-center justify-center gap-1';\n" +
+            "          btn.innerText = '▶️ Bật Seeder 1001';\n" +
+            "        } else if (id === '1002') {\n" +
+            "          btn.className = 'w-full py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-medium text-xs rounded transition flex items-center justify-center gap-1';\n" +
+            "          btn.innerText = '▶️ Bật Leecher 1002';\n" +
+            "        } else if (id === '1003') {\n" +
+            "          btn.className = 'w-full py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs rounded transition flex items-center justify-center gap-1';\n" +
+            "          btn.innerText = '▶️ Bật Leecher 1003';\n" +
+            "        }\n" +
             "      }\n" +
             "\n" +
             "      if (id !== '1001') {\n" +
