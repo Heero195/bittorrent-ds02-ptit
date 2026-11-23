@@ -192,32 +192,47 @@ public class PeerAdmin {
 	}
 
 	public void createNeighbourConnections() {
-		try {
-			Thread.sleep(2000);
-			for (String pid : this.peerList) {
-				if (pid.equals(this.peerID)) {
-					break;
-				} else {
-					RemotePeerInfo peer = this.peerInfoMap.get(pid);
-					if (peer != null) {
-						try {
-							Socket temp = new Socket(peer.peerAddress, peer.peerPort);
-							PeerHandler p = new PeerHandler(temp, this);
-							p.setEndPeerID(pid);
-							this.addJoinedPeer(p, pid);
-							Thread t = new Thread(p);
-							this.addJoinedThreads(pid, t);
-							t.start();
-						} catch (Exception connEx) {
-							System.err.println("[PEER_" + peerID + "] Could not connect to neighbor peer " + pid + ": "
-									+ connEx.getMessage());
+		new Thread(() -> {
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException ignored) {}
+
+			while (!this.iamDone) {
+				boolean allConnected = true;
+				for (String pid : this.peerList) {
+					if (pid.equals(this.peerID)) {
+						break;
+					} else {
+						if (!this.joinedPeers.containsKey(pid)) {
+							allConnected = false;
+							RemotePeerInfo peer = this.peerInfoMap.get(pid);
+							if (peer != null) {
+								try {
+									Socket temp = new Socket(peer.peerAddress, peer.peerPort);
+									PeerHandler p = new PeerHandler(temp, this);
+									p.setEndPeerID(pid);
+									this.addJoinedPeer(p, pid);
+									Thread t = new Thread(p);
+									this.addJoinedThreads(pid, t);
+									t.start();
+									System.out.println("[PEER_" + peerID + "] Connected successfully to neighbor peer " + pid);
+								} catch (Exception connEx) {
+									// Neighbor peer not online yet; will retry automatically
+								}
+							}
 						}
 					}
 				}
+				if (allConnected) {
+					break;
+				}
+				try {
+					Thread.sleep(1500);
+				} catch (InterruptedException ignored) {
+					break;
+				}
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		}, "NeighbourConnector-" + this.peerID).start();
 	}
 
 	public void initializePieceAvailability() {

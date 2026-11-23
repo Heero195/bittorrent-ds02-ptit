@@ -340,13 +340,19 @@ public class WebDashboard {
             color = "indigo";
             details = "Tiếp nhận kết nối Handshake từ Peer " + source;
         } else if (msg.contains("has downloaded the piece")) {
-            type = "PIECE_RECEIVED";
             String piece = extractBracket(msg, 2);
             String fromPeer = extractBracket(msg, 3);
             source = fromPeer;
             target = ownerPeer;
-            color = "emerald";
-            details = "Tải thành công mảnh #" + piece + " (32KB) từ Peer " + fromPeer + " - Đã băm khớp SHA-256";
+            if ("1002".equals(fromPeer)) {
+                type = "LEECHER_SEEDING";
+                color = "purple";
+                details = "⚡ LEECHER 1002 LÀM SEEDER: Cung cấp mảnh #" + piece + " (32KB) cho Peer " + target + "!";
+            } else {
+                type = "PIECE_RECEIVED";
+                color = "emerald";
+                details = "Tải thành công mảnh #" + piece + " (32KB) từ Peer " + fromPeer + " - Đã băm khớp SHA-256";
+            }
         } else if (msg.contains("received the 'have' message")) {
             type = "HAVE_BROADCAST";
             String fromPeer = extractBracket(msg, 2);
@@ -615,11 +621,11 @@ public class WebDashboard {
             "        <div class=\"bg-slate-950 border border-slate-800/80 rounded-lg p-3 space-y-2 flex flex-col justify-between\">\n" +
             "          <div>\n" +
             "            <div class=\"flex items-center justify-between\">\n" +
-            "              <span class=\"text-[11px] font-bold text-amber-400\">BƯỚC 3: LEECHER 1002</span>\n" +
+            "              <span id=\"titleStep1002\" class=\"text-[11px] font-bold text-amber-400\">BƯỚC 3: LEECHER 1002</span>\n" +
             "              <span id=\"badge1002\" class=\"px-2 py-0.5 text-[10px] rounded-full bg-slate-800 text-slate-400\">Offline</span>\n" +
             "            </div>\n" +
             "            <div class=\"text-xs font-semibold text-white mt-1\">Tiêm lỗi mảnh #2</div>\n" +
-            "            <p class=\"text-[11px] text-slate-400 mt-0.5\">Tải từ 1001, tự phát hiện & phục hồi lỗi.</p>\n" +
+            "            <p id=\"descStep1002\" class=\"text-[11px] text-slate-400 mt-0.5\">Tải từ 1001, tự phát hiện & phục hồi lỗi.</p>\n" +
             "          </div>\n" +
             "          <button id=\"btn1002\" onclick=\"callAction('start_1002')\" class=\"w-full py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-medium text-xs rounded transition flex items-center justify-center gap-1\">\n" +
             "            <span>▶️</span> Bật Leecher 1002\n" +
@@ -630,11 +636,11 @@ public class WebDashboard {
             "        <div class=\"bg-slate-950 border border-slate-800/80 rounded-lg p-3 space-y-2 flex flex-col justify-between\">\n" +
             "          <div>\n" +
             "            <div class=\"flex items-center justify-between\">\n" +
-            "              <span class=\"text-[11px] font-bold text-cyan-400\">BƯỚC 4: LEECHER 1003</span>\n" +
+            "              <span id=\"titleStep1003\" class=\"text-[11px] font-bold text-cyan-400\">BƯỚC 4: LEECHER 1003</span>\n" +
             "              <span id=\"badge1003\" class=\"px-2 py-0.5 text-[10px] rounded-full bg-slate-800 text-slate-400\">Offline</span>\n" +
             "            </div>\n" +
             "            <div class=\"text-xs font-semibold text-white mt-1\">Tải chéo đa nguồn</div>\n" +
-            "            <p class=\"text-[11px] text-slate-400 mt-0.5\">Tải từ cả 1001 và 1002 (Tit-for-Tat).</p>\n" +
+            "            <p id=\"descStep1003\" class=\"text-[11px] text-slate-400 mt-0.5\">Tải từ cả 1001 và 1002 (Tit-for-Tat).</p>\n" +
             "          </div>\n" +
             "          <button id=\"btn1003\" onclick=\"callAction('start_1003')\" class=\"w-full py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs rounded transition flex items-center justify-center gap-1\">\n" +
             "            <span>▶️</span> Bật Leecher 1003\n" +
@@ -659,7 +665,7 @@ public class WebDashboard {
             "        <!-- 1001 -->\n" +
             "        <div class=\"bg-slate-950 p-3 rounded-lg border border-slate-800/80 space-y-2\">\n" +
             "          <div class=\"flex items-center justify-between\">\n" +
-            "            <span class=\"text-xs font-bold text-emerald-400\">Peer 1001 (Seeder)</span>\n" +
+            "            <span class=\"text-xs font-bold text-emerald-400\">Peer 1001 (Seeder Gốc)</span>\n" +
             "            <span class=\"text-xs font-mono text-emerald-400\">31/31 (100%)</span>\n" +
             "          </div>\n" +
             "          <div class=\"w-full bg-slate-800 h-1.5 rounded-full overflow-hidden\"><div class=\"bg-emerald-500 h-full w-full\"></div></div>\n" +
@@ -668,7 +674,7 @@ public class WebDashboard {
             "        <!-- 1002 -->\n" +
             "        <div class=\"bg-slate-950 p-3 rounded-lg border border-slate-800/80 space-y-2\">\n" +
             "          <div class=\"flex items-center justify-between\">\n" +
-            "            <span class=\"text-xs font-bold text-amber-400\">Peer 1002 (Leecher + Tiêm lỗi)</span>\n" +
+            "            <span id=\"matrixTitle1002\" class=\"text-xs font-bold text-amber-400\">Peer 1002 (Leecher + Tiêm lỗi)</span>\n" +
             "            <span id=\"txt1002\" class=\"text-xs font-mono text-amber-400\">0/31 (0%)</span>\n" +
             "          </div>\n" +
             "          <div class=\"w-full bg-slate-800 h-1.5 rounded-full overflow-hidden\"><div id=\"bar1002\" class=\"bg-amber-500 h-full w-0 transition-all duration-300\"></div></div>\n" +
@@ -677,7 +683,7 @@ public class WebDashboard {
             "        <!-- 1003 -->\n" +
             "        <div class=\"bg-slate-950 p-3 rounded-lg border border-slate-800/80 space-y-2\">\n" +
             "          <div class=\"flex items-center justify-between\">\n" +
-            "            <span class=\"text-xs font-bold text-cyan-400\">Peer 1003 (Leecher Swarm)</span>\n" +
+            "            <span id=\"matrixTitle1003\" class=\"text-xs font-bold text-cyan-400\">Peer 1003 (Leecher Swarm)</span>\n" +
             "            <span id=\"txt1003\" class=\"text-xs font-mono text-cyan-400\">0/31 (0%)</span>\n" +
             "          </div>\n" +
             "          <div class=\"w-full bg-slate-800 h-1.5 rounded-full overflow-hidden\"><div id=\"bar1003\" class=\"bg-cyan-500 h-full w-0 transition-all duration-300\"></div></div>\n" +
@@ -747,6 +753,21 @@ public class WebDashboard {
             "              const box = document.getElementById(`piece_${p}_${i}`);\n" +
             "              if (box) box.className = 'piece-box bg-slate-800 border border-slate-700/60';\n" +
             "            }\n" +
+            "            const titleStep = document.getElementById('titleStep' + p);\n" +
+            "            const descStep = document.getElementById('descStep' + p);\n" +
+            "            const matrixTitle = document.getElementById('matrixTitle' + p);\n" +
+            "            if (titleStep) {\n" +
+            "              titleStep.className = p === '1002' ? 'text-[11px] font-bold text-amber-400' : 'text-[11px] font-bold text-cyan-400';\n" +
+            "              titleStep.innerText = p === '1002' ? 'BƯỚC 3: LEECHER 1002' : 'BƯỚC 4: LEECHER 1003';\n" +
+            "            }\n" +
+            "            if (descStep) {\n" +
+            "              descStep.className = 'text-[11px] text-slate-400 mt-0.5';\n" +
+            "              descStep.innerText = p === '1002' ? 'Tải từ 1001, tự phát hiện & phục hồi lỗi.' : 'Tải từ cả 1001 và 1002 (Tit-for-Tat).';\n" +
+            "            }\n" +
+            "            if (matrixTitle) {\n" +
+            "              matrixTitle.className = p === '1002' ? 'text-xs font-bold text-amber-400' : 'text-xs font-bold text-cyan-400';\n" +
+            "              matrixTitle.innerText = p === '1002' ? 'Peer 1002 (Leecher + Tiêm lỗi)' : 'Peer 1003 (Leecher Swarm)';\n" +
+            "            }\n" +
             "          }\n" +
             "          const tbody = document.getElementById('eventsBody');\n" +
             "          if (tbody) tbody.innerHTML = '';\n" +
@@ -794,14 +815,59 @@ public class WebDashboard {
             "      const txt = document.getElementById('txt' + id);\n" +
             "      const bar = document.getElementById('bar' + id);\n" +
             "\n" +
+            "      const titleStep = document.getElementById('titleStep' + id);\n" +
+            "      const descStep = document.getElementById('descStep' + id);\n" +
+            "      const matrixTitle = document.getElementById('matrixTitle' + id);\n" +
+            "\n" +
             "      if (isRunning) {\n" +
-            "        badge.className = 'px-2 py-0.5 text-[10px] rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold';\n" +
-            "        badge.innerText = isComplete ? 'Seeder (Xong)' : 'Leecher (Đang chạy)';\n" +
+            "        if (isComplete) {\n" +
+            "          badge.className = 'px-2 py-0.5 text-[10px] rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold';\n" +
+            "          badge.innerText = '⚡ Seeder (Xong 100%)';\n" +
+            "          if (titleStep) {\n" +
+            "            titleStep.className = 'text-[11px] font-bold text-emerald-400';\n" +
+            "            titleStep.innerText = `BƯỚC ${id === '1002' ? '3' : '4'}: SEEDER ${id}`;\n" +
+            "          }\n" +
+            "          if (descStep) {\n" +
+            "            descStep.className = 'text-[11px] text-emerald-300 font-medium mt-0.5';\n" +
+            "            descStep.innerText = id === '1002' ? '🌟 ĐÃ LÀ SEEDER: Cấp mảnh chia sẻ cho 1003!' : '🌟 ĐÃ LÀ SEEDER: Toàn bộ Swarm hoàn tất!';\n" +
+            "          }\n" +
+            "          if (matrixTitle) {\n" +
+            "            matrixTitle.className = 'text-xs font-bold text-emerald-400 flex items-center gap-1.5';\n" +
+            "            matrixTitle.innerHTML = `Peer ${id} <span class=\"px-1.5 py-0.2 rounded text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold\">⚡ SEEDER</span>`;\n" +
+            "          }\n" +
+            "        } else {\n" +
+            "          badge.className = 'px-2 py-0.5 text-[10px] rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold';\n" +
+            "          badge.innerText = 'Leecher (Đang tải...)';\n" +
+            "          if (titleStep) {\n" +
+            "            titleStep.className = id === '1002' ? 'text-[11px] font-bold text-amber-400' : 'text-[11px] font-bold text-cyan-400';\n" +
+            "            titleStep.innerText = `BƯỚC ${id === '1002' ? '3' : '4'}: LEECHER ${id}`;\n" +
+            "          }\n" +
+            "          if (descStep) {\n" +
+            "            descStep.className = 'text-[11px] text-slate-400 mt-0.5';\n" +
+            "            descStep.innerText = id === '1002' ? 'Tải từ 1001, tự phát hiện & phục hồi lỗi.' : 'Tải từ cả 1001 và 1002 (Tit-for-Tat).';\n" +
+            "          }\n" +
+            "          if (matrixTitle) {\n" +
+            "            matrixTitle.className = id === '1002' ? 'text-xs font-bold text-amber-400' : 'text-xs font-bold text-cyan-400';\n" +
+            "            matrixTitle.innerText = id === '1002' ? 'Peer 1002 (Leecher + Tiêm lỗi)' : 'Peer 1003 (Leecher Swarm)';\n" +
+            "          }\n" +
+            "        }\n" +
             "        btn.className = 'w-full py-1.5 bg-slate-800 text-slate-400 text-xs rounded cursor-default';\n" +
             "        btn.innerText = '✓ Đang chạy';\n" +
             "      } else {\n" +
             "        badge.className = 'px-2 py-0.5 text-[10px] rounded-full bg-slate-800 text-slate-400';\n" +
             "        badge.innerText = 'Offline';\n" +
+            "        if (titleStep) {\n" +
+            "          titleStep.className = id === '1002' ? 'text-[11px] font-bold text-amber-400' : (id === '1003' ? 'text-[11px] font-bold text-cyan-400' : 'text-[11px] font-bold text-emerald-400');\n" +
+            "          titleStep.innerText = id === '1001' ? 'BƯỚC 2: SEEDER 1001' : (id === '1002' ? 'BƯỚC 3: LEECHER 1002' : 'BƯỚC 4: LEECHER 1003');\n" +
+            "        }\n" +
+            "        if (descStep) {\n" +
+            "          descStep.className = 'text-[11px] text-slate-400 mt-0.5';\n" +
+            "          descStep.innerText = id === '1002' ? 'Tải từ 1001, tự phát hiện & phục hồi lỗi.' : 'Tải từ cả 1001 và 1002 (Tit-for-Tat).';\n" +
+            "        }\n" +
+            "        if (matrixTitle) {\n" +
+            "          matrixTitle.className = id === '1002' ? 'text-xs font-bold text-amber-400' : 'text-xs font-bold text-cyan-400';\n" +
+            "          matrixTitle.innerText = id === '1002' ? 'Peer 1002 (Leecher + Tiêm lỗi)' : 'Peer 1003 (Leecher Swarm)';\n" +
+            "        }\n" +
             "        if (id === '1001') {\n" +
             "          btn.className = 'w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded transition flex items-center justify-center gap-1';\n" +
             "          btn.innerText = '▶️ Bật Seeder 1001';\n" +
