@@ -157,7 +157,7 @@ public class PeerAdmin {
 			if (!hasFile()) {
 				file.createNewFile();
 			}
-			this.fileRaf = new RandomAccessFile(file, "rw");
+			this.fileRaf = new RandomAccessFile(file, hasFile() ? "r" : "rw");
 			if (!hasFile()) {
 				this.fileRaf.setLength(this.getFileSize());
 			}
@@ -476,6 +476,12 @@ public class PeerAdmin {
 		try {
 			String filepath = "peer_" + this.peerID + "/" + getFileName();
 			File file = new File(filepath);
+			if (this.fileRaf != null) {
+				try {
+					this.fileRaf.close();
+					this.fileRaf = new RandomAccessFile(file, "r");
+				} catch (Exception ignored) {}
+			}
 			if (file.exists() && metadata != null && metadata.getFileHash() != null) {
 				MessageDigest md = MessageDigest.getInstance("SHA-256");
 				try (FileInputStream fis = new FileInputStream(file)) {
