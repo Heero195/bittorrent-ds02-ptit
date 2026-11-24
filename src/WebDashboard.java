@@ -307,16 +307,17 @@ public class WebDashboard {
         public void handle(HttpExchange exchange) throws IOException {
             List<P2PEvent> events = parseAllEvents();
             StringBuilder json = new StringBuilder("[");
-            int start = Math.max(0, events.size() - 60);
-            for (int i = start; i < events.size(); i++) {
+            for (int i = 0; i < events.size(); i++) {
                 P2PEvent e = events.get(i);
+                String safeDetails = e.details.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ").replace("\r", "");
+                String safeTime = e.time.replace("\\", "\\\\").replace("\"", "\\\"");
                 json.append(String.format(
                     "{\"time\": \"%s\", \"source\": \"%s\", \"target\": \"%s\", \"type\": \"%s\", \"details\": \"%s\", \"color\": \"%s\"}",
-                    e.time.replace("\"", "\\\""),
+                    safeTime,
                     e.source,
                     e.target,
                     e.type,
-                    e.details.replace("\"", "\\\""),
+                    safeDetails,
                     e.badgeColor
                 ));
                 if (i < events.size() - 1) json.append(",");
@@ -779,23 +780,35 @@ public class WebDashboard {
             "\n" +
             "    <!-- Real Live Protocol Packet Inspector -->\n" +
             "    <div class=\"bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-3\">\n" +
-            "      <div class=\"flex items-center justify-between\">\n" +
-            "        <div class=\"flex items-center gap-2\">\n" +
+            "      <div class=\"flex flex-wrap items-center justify-between gap-2\">\n" +
+            "        <div class=\"flex items-center gap-2.5\">\n" +
             "          <span class=\"w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse\"></span>\n" +
             "          <h2 class=\"text-xs font-semibold uppercase tracking-wider text-slate-300\">\n" +
             "            Luồng trao đổi gói tin P2P thực tế (Live P2P Message Exchange)\n" +
             "          </h2>\n" +
+            "          <span id=\"eventCountBadge\" class=\"px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-emerald-400 border border-emerald-500/30 font-mono font-semibold\">0 gói tin (Full Log)</span>\n" +
             "        </div>\n" +
-            "        <span class=\"text-[11px] text-slate-500 font-mono\">Bóc tách trực tiếp từ giao thức TCP</span>\n" +
+            "        <div class=\"flex items-center gap-2\">\n" +
+            "          <span class=\"text-[11px] text-slate-500 font-mono hidden md:inline\">Bóc tách trực tiếp từ giao thức TCP</span>\n" +
+            "          <button onclick=\"toggleEventSort()\" id=\"btnSortOrder\" class=\"px-2.5 py-1 text-[11px] rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1.5\" title=\"Thay đổi chiều hiển thị log\">\n" +
+            "            <span id=\"sortOrderIcon\">⬇️</span> <span id=\"sortOrderLabel\">Mới nhất trên đầu</span>\n" +
+            "          </button>\n" +
+            "          <button onclick=\"scrollEventsToTop()\" class=\"px-2.5 py-1 text-[11px] rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1\" title=\"Cuộn lên đầu bảng\">\n" +
+            "            ⬆️ Lên đầu\n" +
+            "          </button>\n" +
+            "          <button onclick=\"scrollEventsToBottom()\" class=\"px-2.5 py-1 text-[11px] rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1\" title=\"Cuộn xuống đáy bảng\">\n" +
+            "            ⬇️ Xuống đáy\n" +
+            "          </button>\n" +
+            "        </div>\n" +
             "      </div>\n" +
-            "      <div class=\"overflow-x-auto rounded-lg border border-slate-800\">\n" +
+            "      <div id=\"eventsContainer\" class=\"overflow-x-auto overflow-y-auto max-h-[500px] rounded-lg border border-slate-800 scroll-smooth\">\n" +
             "        <table class=\"w-full text-left text-xs\">\n" +
-            "          <thead class=\"bg-slate-950 text-slate-400 font-semibold border-b border-slate-800\">\n" +
+            "          <thead class=\"sticky top-0 bg-slate-950 text-slate-400 font-semibold border-b border-slate-800 z-10 shadow-sm\">\n" +
             "            <tr>\n" +
-            "              <th class=\"py-2 px-3 w-28\">Thời gian</th>\n" +
-            "              <th class=\"py-2 px-3 w-32\">Nút nguồn ➔ Đích</th>\n" +
-            "              <th class=\"py-2 px-3 w-40\">Loại gói tin BitTorrent</th>\n" +
-            "              <th class=\"py-2 px-3\">Chi tiết trao đổi & Ý nghĩa hệ phân tán</th>\n" +
+            "              <th class=\"py-2.5 px-3 w-28 bg-slate-950\">Thời gian</th>\n" +
+            "              <th class=\"py-2.5 px-3 w-36 bg-slate-950\">Nút nguồn ➔ Đích</th>\n" +
+            "              <th class=\"py-2.5 px-3 w-44 bg-slate-950\">Loại gói tin BitTorrent</th>\n" +
+            "              <th class=\"py-2.5 px-3 bg-slate-950\">Chi tiết trao đổi & Ý nghĩa hệ phân tán</th>\n" +
             "            </tr>\n" +
             "          </thead>\n" +
             "          <tbody id=\"eventsBody\" class=\"divide-y divide-slate-800/60 font-mono text-[11px] bg-slate-950/60\">\n" +
@@ -908,8 +921,12 @@ public class WebDashboard {
             "          if (b1001) { b1001.className = 'px-2 py-0.5 text-[10px] rounded-full bg-slate-800 text-slate-400'; b1001.innerText = 'Offline'; }\n" +
             "          if (btn1001) { btn1001.className = 'w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded transition flex items-center justify-center gap-1'; btn1001.innerText = '▶️ Bật Seeder 1001'; }\n" +
             "          const tbody = document.getElementById('eventsBody');\n" +
-            "          if (tbody) tbody.innerHTML = '';\n" +
+            "          if (tbody) tbody.innerHTML = '<tr><td colspan=\"4\" class=\"py-4 text-center text-slate-500\">Chưa có gói tin nào được trao đổi. Hãy bật Tracker và các Peer ở bảng trên để xem gói tin truyền tải!</td></tr>';\n" +
             "          window.corruptTimers = {};\n" +
+            "          window.lastEventCount = -1;\n" +
+            "          window.cachedEventsList = [];\n" +
+            "          const eb = document.getElementById('eventCountBadge');\n" +
+            "          if (eb) eb.innerText = '0 gói tin (Full Log)';\n" +
             "        }\n" +
             "        setTimeout(pollStatus, 400);\n" +
             "        setTimeout(pollEvents, 500);\n" +
@@ -1093,41 +1110,90 @@ public class WebDashboard {
             "      }\n" +
             "    }\n" +
             "\n" +
+            "    let eventSortNewestFirst = true;\n" +
+            "    window.lastEventCount = -1;\n" +
+            "    window.cachedEventsList = [];\n" +
+            "\n" +
+            "    function toggleEventSort() {\n" +
+            "      eventSortNewestFirst = !eventSortNewestFirst;\n" +
+            "      const label = document.getElementById('sortOrderLabel');\n" +
+            "      const icon = document.getElementById('sortOrderIcon');\n" +
+            "      if (label) label.innerText = eventSortNewestFirst ? 'Mới nhất trên đầu' : 'Cũ nhất trên đầu (Tuần tự)';\n" +
+            "      if (icon) icon.innerText = eventSortNewestFirst ? '⬇️' : '⬆️';\n" +
+            "      renderEvents(window.cachedEventsList);\n" +
+            "    }\n" +
+            "\n" +
+            "    function scrollEventsToTop() {\n" +
+            "      const c = document.getElementById('eventsContainer');\n" +
+            "      if (c) c.scrollTop = 0;\n" +
+            "    }\n" +
+            "\n" +
+            "    function scrollEventsToBottom() {\n" +
+            "      const c = document.getElementById('eventsContainer');\n" +
+            "      if (c) c.scrollTop = c.scrollHeight;\n" +
+            "    }\n" +
+            "\n" +
+            "    function renderEvents(list) {\n" +
+            "      const tbody = document.getElementById('eventsBody');\n" +
+            "      if (!tbody) return;\n" +
+            "      if (!list || list.length === 0) {\n" +
+            "        tbody.innerHTML = '<tr><td colspan=\"4\" class=\"py-4 text-center text-slate-500\">Chưa có gói tin nào được trao đổi. Hãy bật Tracker và các Peer ở bảng trên để xem gói tin truyền tải!</td></tr>';\n" +
+            "        return;\n" +
+            "      }\n" +
+            "      let html = '';\n" +
+            "      const total = list.length;\n" +
+            "      const start = eventSortNewestFirst ? total - 1 : 0;\n" +
+            "      const end = eventSortNewestFirst ? -1 : total;\n" +
+            "      const step = eventSortNewestFirst ? -1 : 1;\n" +
+            "\n" +
+            "      for (let i = start; i !== end; i += step) {\n" +
+            "        const e = list[i];\n" +
+            "        let badgeBg = 'bg-slate-800 text-slate-300';\n" +
+            "        if (e.color === 'emerald' || e.color === 'green') badgeBg = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';\n" +
+            "        else if (e.color === 'blue' || e.color === 'indigo') badgeBg = 'bg-blue-500/20 text-blue-400 border border-blue-500/30';\n" +
+            "        else if (e.color === 'purple') badgeBg = 'bg-purple-500/20 text-purple-400 border border-purple-500/30';\n" +
+            "        else if (e.color === 'cyan' || e.color === 'teal') badgeBg = 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30';\n" +
+            "        else if (e.color === 'rose') badgeBg = 'bg-rose-500/20 text-rose-400 border border-rose-500/30';\n" +
+            "        else if (e.color === 'amber') badgeBg = 'bg-amber-500/20 text-amber-400 border border-amber-500/30';\n" +
+            "\n" +
+            "        let rowBg = e.type === 'CORRUPT_REJECTED' ? 'bg-rose-950/40 border-l-2 border-rose-500' : 'hover:bg-slate-900/80';\n" +
+            "        html += `\n" +
+            "          <tr class=\"${rowBg} transition\">\n" +
+            "            <td class=\"py-2 px-3 text-slate-400\">${e.time.split(' ')[1] || e.time}</td>\n" +
+            "            <td class=\"py-2 px-3\">\n" +
+            "              <span class=\"px-1.5 py-0.5 rounded bg-slate-800 text-slate-200 font-bold\">Peer ${e.source}</span>\n" +
+            "              <span class=\"text-slate-500 mx-1\">➔</span>\n" +
+            "              <span class=\"px-1.5 py-0.5 rounded bg-slate-800 text-slate-200 font-bold\">Peer ${e.target}</span>\n" +
+            "            </td>\n" +
+            "            <td class=\"py-2 px-3\">\n" +
+            "              <span class=\"px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeBg}\">${e.type}</span>\n" +
+            "            </td>\n" +
+            "            <td class=\"py-2 px-3 text-slate-200 font-sans text-xs\">${e.details}</td>\n" +
+            "          </tr>`;\n" +
+            "      }\n" +
+            "      tbody.innerHTML = html;\n" +
+            "    }\n" +
+            "\n" +
             "    async function pollEvents() {\n" +
             "      try {\n" +
             "        const res = await fetch('/api/events');\n" +
             "        const list = await res.json();\n" +
-            "        const tbody = document.getElementById('eventsBody');\n" +
+            "        const countBadge = document.getElementById('eventCountBadge');\n" +
+            "        if (countBadge) countBadge.innerText = (list ? list.length : 0) + ' gói tin (Full Log)';\n" +
             "\n" +
-            "        if (!list || list.length === 0) return;\n" +
-            "\n" +
-            "        let html = '';\n" +
-            "        for (let i = list.length - 1; i >= 0; i--) {\n" +
-            "          const e = list[i];\n" +
-            "          let badgeBg = 'bg-slate-800 text-slate-300';\n" +
-            "          if (e.color === 'emerald' || e.color === 'green') badgeBg = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';\n" +
-            "          else if (e.color === 'blue' || e.color === 'indigo') badgeBg = 'bg-blue-500/20 text-blue-400 border border-blue-500/30';\n" +
-            "          else if (e.color === 'purple') badgeBg = 'bg-purple-500/20 text-purple-400 border border-purple-500/30';\n" +
-            "          else if (e.color === 'cyan' || e.color === 'teal') badgeBg = 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30';\n" +
-            "          else if (e.color === 'rose') badgeBg = 'bg-rose-500/20 text-rose-400 border border-rose-500/30';\n" +
-            "          else if (e.color === 'amber') badgeBg = 'bg-amber-500/20 text-amber-400 border border-amber-500/30';\n" +
-            "\n" +
-            "          let rowBg = e.type === 'CORRUPT_REJECTED' ? 'bg-rose-950/40 border-l-2 border-rose-500' : 'hover:bg-slate-900/80';\n" +
-            "          html += `\n" +
-            "            <tr class=\"${rowBg} transition\">\n" +
-            "              <td class=\"py-2 px-3 text-slate-400\">${e.time.split(' ')[1] || e.time}</td>\n" +
-            "              <td class=\"py-2 px-3\">\n" +
-            "                <span class=\"px-1.5 py-0.5 rounded bg-slate-800 text-slate-200 font-bold\">Peer ${e.source}</span>\n" +
-            "                <span class=\"text-slate-500 mx-1\">➔</span>\n" +
-            "                <span class=\"px-1.5 py-0.5 rounded bg-slate-800 text-slate-200 font-bold\">Peer ${e.target}</span>\n" +
-            "              </td>\n" +
-            "              <td class=\"py-2 px-3\">\n" +
-            "                <span class=\"px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeBg}\">${e.type}</span>\n" +
-            "              </td>\n" +
-            "              <td class=\"py-2 px-3 text-slate-200 font-sans text-xs\">${e.details}</td>\n" +
-            "            </tr>`;\n" +
+            "        if (!list || list.length === 0) {\n" +
+            "          if (window.lastEventCount !== 0) {\n" +
+            "            window.lastEventCount = 0;\n" +
+            "            window.cachedEventsList = [];\n" +
+            "            renderEvents([]);\n" +
+            "          }\n" +
+            "          return;\n" +
             "        }\n" +
-            "        tbody.innerHTML = html;\n" +
+            "\n" +
+            "        if (list.length === window.lastEventCount) return;\n" +
+            "        window.lastEventCount = list.length;\n" +
+            "        window.cachedEventsList = list;\n" +
+            "        renderEvents(list);\n" +
             "      } catch (e) { console.error(e); }\n" +
             "    }\n" +
             "\n" +
