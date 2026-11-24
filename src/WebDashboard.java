@@ -10,6 +10,7 @@ import java.net.Socket;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
@@ -284,21 +285,40 @@ public class WebDashboard {
         public String type;
         public String details;
         public String badgeColor;
-        public long timestamp;
+        public long epochSecond;
+        public long causalOrder;
+        public long fileOrder;
 
-        public P2PEvent(String time, String source, String target, String type, String details, String badgeColor, long timestamp) {
+        public P2PEvent(String time, String source, String target, String type, String details, String badgeColor, long epochSecond, long causalOrder, long fileOrder) {
             this.time = time;
             this.source = source;
             this.target = target;
             this.type = type;
             this.details = details;
             this.badgeColor = badgeColor;
-            this.timestamp = timestamp;
+            this.epochSecond = epochSecond;
+            this.causalOrder = causalOrder;
+            this.fileOrder = fileOrder;
         }
 
         @Override
         public int compareTo(P2PEvent o) {
-            return Long.compare(this.timestamp, o.timestamp);
+            if (this.epochSecond != o.epochSecond) {
+                return Long.compare(this.epochSecond, o.epochSecond);
+            }
+            if (this.causalOrder != o.causalOrder) {
+                return Long.compare(this.causalOrder, o.causalOrder);
+            }
+            return Long.compare(this.fileOrder, o.fileOrder);
+        }
+    }
+
+    private static long parseTimestamp(String timeStr) {
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("dd-MMM-yyyy hh:mm:ss a", Locale.ENGLISH);
+            return sdf.parse(timeStr.trim()).getTime() / 1000L;
+        } catch (Exception e) {
+            return 0L;
         }
     }
 
@@ -335,15 +355,15 @@ public class WebDashboard {
 
     private static List<P2PEvent> parseAllEvents() {
         List<P2PEvent> events = new ArrayList<>();
+        long globalOrder = 0;
         for (String peer : new String[]{"1001", "1002", "1003"}) {
             File f = new File("log_peer_" + peer + ".log");
             if (!f.exists()) continue;
             try (BufferedReader br = new BufferedReader(new FileReader(f))) {
                 String line;
-                long count = 0;
                 while ((line = br.readLine()) != null) {
-                    count++;
-                    P2PEvent evt = parseLineToEvent(peer, line, count);
+                    globalOrder++;
+                    P2PEvent evt = parseLineToEvent(peer, line, globalOrder);
                     if (evt != null) events.add(evt);
                 }
             } catch (Exception ignored) {}
@@ -364,12 +384,14 @@ public class WebDashboard {
         String target = "Swarm";
         String color = "slate";
         String details = msg;
+        long causalOrder = 500L;
 
         if (msg.contains("makes a connection to Peer")) {
             type = "HANDSHAKE_OUT";
             target = extractBracket(msg, 2);
             color = "blue";
             details = "Chủ động gửi gói tin Handshake (32 bytes) tới Peer " + target;
+            causalOrder = 10L;
         } else if (msg.contains("is connected from Peer")) {
             type = "HANDSHAKE_IN";
             target = extractBracket(msg, 2);
@@ -377,11 +399,61 @@ public class WebDashboard {
             target = ownerPeer;
             color = "indigo";
             details = "Tiếp nhận kết nối Handshake từ Peer " + source;
+            causalOrder = 11L;
+        } else if (msg.contains("received the 'interested' message")) {
+            type = "INTERESTED";
+            String from = extractBracket(msg, 2);
+            source = from;
+            target = ownerPeer;
+            color = "sky";
+            details = "Peer " + from + " gửi 'INTERESTED': Muốn xin các mảnh dữ liệu đang có.";
+            causalOrder = 20L;
+        } else if (msg.contains("has the preferred neighbors")) {
+            type = "TIT_FOR_TAT";
+            String neighbors = extractBracket(msg, 2);
+            color = "purple";
+            details = "Thuật toán Tit-for-Tat: Chọn láng giềng ưu tiên có tốc độ cao nhất: [" + neighbors + "]";
+            causalOrder = 30L;
+        } else if (msg.contains("has the optimistically unchoked neighbor")) {
+            type = "OPTIMISTIC_UNCHOKE";
+            String unchoked = extractBracket(msg, 2);
+            color = "cyan";
+            details = "Mở van lạc quan (15s): Ngẫu nhiên mở van unchoke cho Peer " + unchoked + " để tìm đường truyền tốt hơn";
+            causalOrder = 31L;
+        } else if (msg.contains("is unchoked by")) {
+            type = "UNCHOKED";
+            String from = extractBracket(msg, 2);
+            source = from;
+            target = ownerPeer;
+            color = "green";
+            details = "Được Peer " + from + " mở van (UNCHOKE) - Cho phép gửi yêu cầu xin mảnh";
+            causalOrder = 40L;
+        } else if (msg.contains("is choked by")) {
+            type = "CHOKED";
+            String from = extractBracket(msg, 2);
+            source = from;
+            target = ownerPeer;
+            color = "amber";
+            details = "Bị Peer " + from + " khóa van (CHOKE) theo luật Tit-for-Tat";
+            causalOrder = 41L;
+        } else if (msg.contains("FAULT_TOLERANCE") || msg.contains("INVALID/CORRUPT")) {
+            type = "CORRUPT_REJECTED";
+            String piece = extractBracket(msg, 3);
+            String fromPeer = extractBracket(msg, 4);
+            source = ownerPeer;
+            target = fromPeer.equals("?") ? "1001" : fromPeer;
+            color = "rose";
+            details = "PHÁT HIỆN MẢNH HỎNG: Mảnh #" + piece + " bị băm SHA-256 sai lệch! Từ chối ghi đĩa và yêu cầu tải lại.";
+            int pIdx = 0;
+            try { pIdx = Integer.parseInt(piece); } catch (Exception ignored) {}
+            causalOrder = 1000L + (long) pIdx * 10L + 1L; // Stage 1: Corrupted piece rejected
         } else if (msg.contains("has downloaded the piece")) {
             String piece = extractBracket(msg, 2);
             String fromPeer = extractBracket(msg, 3);
             source = fromPeer;
             target = ownerPeer;
+            int pIdx = 0;
+            try { pIdx = Integer.parseInt(piece); } catch (Exception ignored) {}
             if ("1002".equals(fromPeer)) {
                 type = "LEECHER_SEEDING";
                 color = "purple";
@@ -391,6 +463,7 @@ public class WebDashboard {
                 color = "emerald";
                 details = "Tải thành công mảnh #" + piece + " (32KB) từ Peer " + fromPeer + " - Đã băm khớp SHA-256";
             }
+            causalOrder = 1000L + (long) pIdx * 10L + 2L; // Stage 2: Piece downloaded & verified
         } else if (msg.contains("received the 'have' message")) {
             type = "HAVE_BROADCAST";
             String fromPeer = extractBracket(msg, 2);
@@ -399,54 +472,25 @@ public class WebDashboard {
             target = ownerPeer;
             color = "teal";
             details = "Peer " + fromPeer + " phát loa: 'Tôi đã có mảnh #" + piece + ", sẵn sàng làm Seeder cho mảnh này!'";
-        } else if (msg.contains("has the preferred neighbors")) {
-            type = "TIT_FOR_TAT";
-            String neighbors = extractBracket(msg, 2);
-            color = "purple";
-            details = "Thuật toán Tit-for-Tat: Chọn láng giềng ưu tiên có tốc độ cao nhất: [" + neighbors + "]";
-        } else if (msg.contains("has the optimistically unchoked neighbor")) {
-            type = "OPTIMISTIC_UNCHOKE";
-            String unchoked = extractBracket(msg, 2);
-            color = "cyan";
-            details = "Mở van lạc quan (15s): Ngẫu nhiên mở van unchoke cho Peer " + unchoked + " để tìm đường truyền tốt hơn";
-        } else if (msg.contains("is unchoked by")) {
-            type = "UNCHOKED";
-            String from = extractBracket(msg, 2);
-            source = from;
-            target = ownerPeer;
-            color = "green";
-            details = "Được Peer " + from + " mở van (UNCHOKE) - Cho phép gửi yêu cầu xin mảnh";
-        } else if (msg.contains("is choked by")) {
-            type = "CHOKED";
-            String from = extractBracket(msg, 2);
-            source = from;
-            target = ownerPeer;
-            color = "amber";
-            details = "Bị Peer " + from + " khóa van (CHOKE) theo luật Tit-for-Tat";
-        } else if (msg.contains("FAULT_TOLERANCE") || msg.contains("INVALID/CORRUPT")) {
-            type = "CORRUPT_REJECTED";
-            color = "rose";
-            details = "PHÁT HIỆN MẢNH HỎNG: Băm SHA-256 thấy sai lệch! Từ chối ghi đĩa và yêu cầu tải lại.";
+            int pIdx = 0;
+            try { pIdx = Integer.parseInt(piece); } catch (Exception ignored) {}
+            causalOrder = 1000L + (long) pIdx * 10L + 3L; // Stage 3: HAVE broadcast
         } else if (msg.contains("downloaded the complete file")) {
             type = "FILE_COMPLETE";
             color = "emerald";
             details = "TẢI TOÀN BỘ FILE HOÀN TẤT (31/31 MẢNH) — Trở thành Seeder chính thức!";
+            causalOrder = 90000L;
         } else if (msg.contains("Full file SHA-256 integrity check PASSED")) {
             type = "HASH_VERIFIED";
             color = "emerald";
             details = "Kiểm tra tính toàn vẹn toàn file thành công: Khớp mã băm SHA-256 gốc!";
-        } else if (msg.contains("received the 'interested' message")) {
-            type = "INTERESTED";
-            String from = extractBracket(msg, 2);
-            source = from;
-            target = ownerPeer;
-            color = "sky";
-            details = "Peer " + from + " gửi 'INTERESTED': Muốn xin các mảnh dữ liệu đang có.";
+            causalOrder = 90001L;
         } else {
             return null; // Skip noisy messages
         }
 
-        return new P2PEvent(timeStr, source, target, type, details, color, lineNum);
+        long epochSec = parseTimestamp(timeStr);
+        return new P2PEvent(timeStr, source, target, type, details, color, epochSec, causalOrder, lineNum);
     }
 
     private static String extractBracket(String text, int occurrence) {
