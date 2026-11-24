@@ -14,11 +14,17 @@ public class PeerProcess {
 		String peerID = args[0];
 		String trackerHost = null;
 		int trackerPort = 0;
-		int corruptChunkIndex = -1;
+		String corruptChunks = null;
+		int noiseRate = 0;
 
 		for (int i = 1; i < args.length; i++) {
 			if (args[i].equalsIgnoreCase("--corrupt-chunk") && i + 1 < args.length) {
-				corruptChunkIndex = Integer.parseInt(args[i + 1]);
+				corruptChunks = args[i + 1];
+				i++;
+			} else if (args[i].equalsIgnoreCase("--noise-rate") && i + 1 < args.length) {
+				try {
+					noiseRate = Integer.parseInt(args[i + 1]);
+				} catch (NumberFormatException ignored) {}
 				i++;
 			} else if (trackerHost == null) {
 				trackerHost = args[i];
@@ -33,10 +39,13 @@ public class PeerProcess {
 		if (trackerHost != null && trackerPort > 0) {
 			System.out.println("Connecting to Tracker at " + trackerHost + ":" + trackerPort);
 		}
-		if (corruptChunkIndex >= 0) {
-			System.out.println("[FAULT_INJECTION_ACTIVE] Will inject corrupt payload for piece #" + corruptChunkIndex);
+		if (corruptChunks != null && !corruptChunks.isEmpty() && !corruptChunks.equals("-1")) {
+			System.out.println("[FAULT_INJECTION_ACTIVE] Will inject corrupt payload for piece(s): " + corruptChunks);
+		}
+		if (noiseRate > 0) {
+			System.out.println("[NETWORK_NOISE_ACTIVE] Simulating random transmission noise: " + noiseRate + "%");
 		}
 
-		PeerAdmin admin = new PeerAdmin(peerID, trackerHost, trackerPort, corruptChunkIndex);
+		PeerAdmin admin = new PeerAdmin(peerID, trackerHost, trackerPort, corruptChunks, noiseRate);
 	}
 }

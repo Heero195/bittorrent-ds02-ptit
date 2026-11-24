@@ -213,13 +213,13 @@ public class WebDashboard {
                         startTracker();
                         break;
                     case "start_1001":
-                        startPeer("peer1001", "1001", false);
+                        startPeer("peer1001", "1001", null, "0");
                         break;
                     case "start_1002":
-                        startPeer("peer1002", "1002", true);
+                        startPeer("peer1002", "1002", params.getOrDefault("corrupt", "2"), params.getOrDefault("noise", "0"));
                         break;
                     case "start_1003":
-                        startPeer("peer1003", "1003", false);
+                        startPeer("peer1003", "1003", params.getOrDefault("corrupt", ""), params.getOrDefault("noise", "0"));
                         break;
                     case "stop_all":
                         stopAll();
@@ -504,13 +504,17 @@ public class WebDashboard {
         }
     }
 
-    private static synchronized void startPeer(String key, String peerId, boolean injectFault) throws IOException {
+    private static synchronized void startPeer(String key, String peerId, String corruptChunk, String noiseRate) throws IOException {
         int port = 6000 + Integer.parseInt(peerId);
         if (!isProcessAlive(key) && !isPortOpen(port)) {
             List<String> cmd = new ArrayList<>(Arrays.asList("java", "-cp", "bin", "PeerProcess", peerId, "localhost", "8888"));
-            if (injectFault) {
+            if (corruptChunk != null && !corruptChunk.trim().isEmpty() && !corruptChunk.equals("-1") && !corruptChunk.equalsIgnoreCase("none")) {
                 cmd.add("--corrupt-chunk");
-                cmd.add("2");
+                cmd.add(corruptChunk.trim());
+            }
+            if (noiseRate != null && !noiseRate.trim().isEmpty() && !noiseRate.equals("0")) {
+                cmd.add("--noise-rate");
+                cmd.add(noiseRate.trim());
             }
             ProcessBuilder pb = new ProcessBuilder(cmd);
             pb.redirectErrorStream(true);
@@ -614,6 +618,50 @@ public class WebDashboard {
             "\n" +
             "    <!-- SHA-256 Result Banner -->\n" +
             "    <div id=\"hashBanner\" class=\"hidden rounded-xl p-4 border transition-all\"></div>\n" +
+            "\n" +
+            "    <!-- Flexible Scenario Presets Selector -->\n" +
+            "    <div class=\"bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-2.5\">\n" +
+            "      <div class=\"flex flex-col sm:flex-row sm:items-center justify-between gap-1\">\n" +
+            "        <h2 class=\"text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-1.5\">\n" +
+            "          <span>🎛️</span> Chọn kịch bản demo linh hoạt (Fault Injection & Network Scenarios)\n" +
+            "        </h2>\n" +
+            "        <span class=\"text-[11px] text-slate-400\">Bấm chọn kịch bản để thay đổi cấu hình chịu lỗi theo yêu cầu của thầy cô</span>\n" +
+            "      </div>\n" +
+            "      <div class=\"grid grid-cols-2 lg:grid-cols-4 gap-2.5\">\n" +
+            "        <!-- Preset 1: Clean -->\n" +
+            "        <button onclick=\"applyScenario('clean')\" id=\"sc_clean\" class=\"p-2.5 rounded-lg border text-left transition flex flex-col justify-between bg-slate-950 border-slate-800 hover:border-slate-700\">\n" +
+            "          <div>\n" +
+            "            <div class=\"font-bold text-xs text-emerald-400 flex items-center gap-1\"><span>🟢</span> Mạng lý tưởng</div>\n" +
+            "            <p class=\"text-[11px] text-slate-400 mt-0.5 leading-tight\">Không lỗi. Cả 1002 và 1003 tải mượt mà 100%.</p>\n" +
+            "          </div>\n" +
+            "          <span class=\"text-[10px] text-emerald-500 font-mono mt-1\">Lỗi: 0%</span>\n" +
+            "        </button>\n" +
+            "        <!-- Preset 2: Standard -->\n" +
+            "        <button onclick=\"applyScenario('default')\" id=\"sc_default\" class=\"p-2.5 rounded-lg border text-left transition flex flex-col justify-between bg-indigo-950/40 border-indigo-500/60 ring-1 ring-indigo-500/40\">\n" +
+            "          <div>\n" +
+            "            <div class=\"font-bold text-xs text-indigo-300 flex items-center gap-1\"><span>🟡</span> Mặc định (1002 lỗi)</div>\n" +
+            "            <p class=\"text-[11px] text-slate-400 mt-0.5 leading-tight\">1002 lỗi mảnh #2 ➔ Tự phục hồi. 1003 tải chéo.</p>\n" +
+            "          </div>\n" +
+            "          <span class=\"text-[10px] text-indigo-400 font-mono mt-1\">1002: Lỗi #2</span>\n" +
+            "        </button>\n" +
+            "        <!-- Preset 3: Both Error -->\n" +
+            "        <button onclick=\"applyScenario('both_error')\" id=\"sc_both_error\" class=\"p-2.5 rounded-lg border text-left transition flex flex-col justify-between bg-slate-950 border-slate-800 hover:border-slate-700\">\n" +
+            "          <div>\n" +
+            "            <div class=\"font-bold text-xs text-rose-400 flex items-center gap-1\"><span>🔴</span> Cả 2 Peer cùng lỗi</div>\n" +
+            "            <p class=\"text-[11px] text-slate-400 mt-0.5 leading-tight\">1002 lỗi #2, 1003 lỗi #5 ➔ Cả hai tự chữa lành!</p>\n" +
+            "          </div>\n" +
+            "          <span class=\"text-[10px] text-rose-400 font-mono mt-1\">1002: #2 | 1003: #5</span>\n" +
+            "        </button>\n" +
+            "        <!-- Preset 4: Random Noise -->\n" +
+            "        <button onclick=\"applyScenario('noise')\" id=\"sc_noise\" class=\"p-2.5 rounded-lg border text-left transition flex flex-col justify-between bg-slate-950 border-slate-800 hover:border-slate-700\">\n" +
+            "          <div>\n" +
+            "            <div class=\"font-bold text-xs text-amber-400 flex items-center gap-1\"><span>🎲</span> Mạng chập chờn</div>\n" +
+            "            <p class=\"text-[11px] text-slate-400 mt-0.5 leading-tight\">Lúc lỗi lúc bình thường. Nhiễu ngẫu nhiên 15%.</p>\n" +
+            "          </div>\n" +
+            "          <span class=\"text-[10px] text-amber-400 font-mono mt-1\">Nhiễu ngẫu nhiên: 15%</span>\n" +
+            "        </button>\n" +
+            "      </div>\n" +
+            "    </div>\n" +
             "\n" +
             "    <!-- Step-by-Step Operator Control Center -->\n" +
             "    <div class=\"bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-3\">\n" +
@@ -775,10 +823,59 @@ public class WebDashboard {
             "    }\n" +
             "    initMatrices();\n" +
             "\n" +
+            "    let currentScenario = 'default';\n" +
+            "    let cfg1002 = { corrupt: '2', noise: '0' };\n" +
+            "    let cfg1003 = { corrupt: '', noise: '0' };\n" +
+            "\n" +
+            "    function applyScenario(sc) {\n" +
+            "      currentScenario = sc;\n" +
+            "      const ids = ['clean', 'default', 'both_error', 'noise'];\n" +
+            "      for (let id of ids) {\n" +
+            "        const el = document.getElementById('sc_' + id);\n" +
+            "        if (el) {\n" +
+            "          if (id === sc) {\n" +
+            "            el.className = 'p-2.5 rounded-lg border text-left transition flex flex-col justify-between bg-indigo-950/40 border-indigo-500/60 ring-1 ring-indigo-500/40';\n" +
+            "          } else {\n" +
+            "            el.className = 'p-2.5 rounded-lg border text-left transition flex flex-col justify-between bg-slate-950 border-slate-800 hover:border-slate-700';\n" +
+            "          }\n" +
+            "        }\n" +
+            "      }\n" +
+            "      const desc1002 = document.getElementById('descStep1002');\n" +
+            "      const desc1003 = document.getElementById('descStep1003');\n" +
+            "      if (sc === 'clean') {\n" +
+            "        cfg1002 = { corrupt: '', noise: '0' };\n" +
+            "        cfg1003 = { corrupt: '', noise: '0' };\n" +
+            "        if (desc1002) desc1002.innerText = 'Đường truyền lý tưởng, không có lỗi.';\n" +
+            "        if (desc1003) desc1003.innerText = 'Tải chéo từ cả 1001 và 1002 không lỗi.';\n" +
+            "      } else if (sc === 'default') {\n" +
+            "        cfg1002 = { corrupt: '2', noise: '0' };\n" +
+            "        cfg1003 = { corrupt: '', noise: '0' };\n" +
+            "        if (desc1002) desc1002.innerText = 'Tiêm lỗi mảnh #2, tự phát hiện & phục hồi lỗi.';\n" +
+            "        if (desc1003) desc1003.innerText = 'Tải chéo đa nguồn từ cả 1001 và 1002.';\n" +
+            "      } else if (sc === 'both_error') {\n" +
+            "        cfg1002 = { corrupt: '2', noise: '0' };\n" +
+            "        cfg1003 = { corrupt: '5', noise: '0' };\n" +
+            "        if (desc1002) desc1002.innerText = 'Tiêm lỗi mảnh #2, tự phát hiện & phục hồi lỗi.';\n" +
+            "        if (desc1003) desc1003.innerText = 'Tiêm lỗi mảnh #5, tự phát hiện & phục hồi lỗi!';\n" +
+            "      } else if (sc === 'noise') {\n" +
+            "        cfg1002 = { corrupt: '', noise: '15' };\n" +
+            "        cfg1003 = { corrupt: '', noise: '15' };\n" +
+            "        if (desc1002) desc1002.innerText = 'Nhiễu ngẫu nhiên 15% (Lúc lỗi lúc bình thường).';\n" +
+            "        if (desc1003) desc1003.innerText = 'Nhiễu ngẫu nhiên 15% (Lúc lỗi lúc bình thường).';\n" +
+            "      }\n" +
+            "    }\n" +
+            "\n" +
             "    async function callAction(cmd) {\n" +
             "      try {\n" +
-            "        await fetch('/api/action?cmd=' + cmd);\n" +
+            "        let url = '/api/action?cmd=' + cmd;\n" +
+            "        if (cmd === 'start_1002') {\n" +
+            "          url += '&corrupt=' + encodeURIComponent(cfg1002.corrupt) + '&noise=' + encodeURIComponent(cfg1002.noise);\n" +
+            "        } else if (cmd === 'start_1003') {\n" +
+            "          url += '&corrupt=' + encodeURIComponent(cfg1003.corrupt) + '&noise=' + encodeURIComponent(cfg1003.noise);\n" +
+            "        }\n" +
+            "        await fetch(url);\n" +
             "        if (cmd === 'clean') {\n" +
+            "          applyScenario(currentScenario);\n" +
             "          const b = document.getElementById('hashBanner');\n" +
             "          if (b) { b.className = 'hidden rounded-xl p-4 border transition-all'; b.innerHTML = ''; }\n" +
             "          for (let p of ['1002', '1003']) {\n" +

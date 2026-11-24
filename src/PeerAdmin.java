@@ -44,17 +44,33 @@ public class PeerAdmin {
 	private int trackerPort;
 	private TrackerClient trackerClient;
 	private Metadata metadata;
-	private int corruptChunkIndex = -1;
+	private Set<Integer> corruptChunkIndices = new HashSet<>();
+	private Set<Integer> corruptedOnce = new HashSet<>();
+	private int noiseRate = 0;
+	private Random noiseRand = new Random();
 
 	public PeerAdmin(String peerID) {
-		this(peerID, null, 0, -1);
+		this(peerID, null, 0, null, 0);
 	}
 
 	public PeerAdmin(String peerID, String trackerHost, int trackerPort, int corruptChunkIndex) {
+		this(peerID, trackerHost, trackerPort, corruptChunkIndex >= 0 ? String.valueOf(corruptChunkIndex) : null, 0);
+	}
+
+	public PeerAdmin(String peerID, String trackerHost, int trackerPort, String corruptChunks, int noiseRate) {
 		this.peerID = peerID;
 		this.trackerHost = trackerHost;
 		this.trackerPort = trackerPort;
-		this.corruptChunkIndex = corruptChunkIndex;
+		this.corruptChunkIndices = new HashSet<>();
+		if (corruptChunks != null && !corruptChunks.trim().isEmpty() && !corruptChunks.equals("-1") && !corruptChunks.equalsIgnoreCase("none")) {
+			for (String part : corruptChunks.split(",")) {
+				try {
+					this.corruptChunkIndices.add(Integer.parseInt(part.trim()));
+				} catch (NumberFormatException ignored) {}
+			}
+		}
+		this.noiseRate = Math.max(0, Math.min(100, noiseRate));
+		this.corruptedOnce = new HashSet<>();
 		this.peerInfoMap = new HashMap<>();
 		this.piecesAvailability = new HashMap<>();
 		this.peerList = new ArrayList<>();
@@ -76,13 +92,21 @@ public class PeerAdmin {
 	}
 
 	public int getCorruptChunkIndex() {
-		return corruptChunkIndex;
+		return corruptChunkIndices.isEmpty() ? -1 : corruptChunkIndices.iterator().next();
 	}
 
 	public synchronized int getAndClearCorruptChunkIndex(int pieceIndex) {
-		if (this.corruptChunkIndex == pieceIndex) {
-			this.corruptChunkIndex = -1;
+		// 1. One-shot fixed chunk corruption (from CLI / UI)
+		if (this.corruptChunkIndices.contains(pieceIndex)) {
+			this.corruptChunkIndices.remove(pieceIndex);
 			return pieceIndex;
+		}
+		// 2. Random transmission noise (e.g. 15% probability)
+		if (this.noiseRate > 0 && !this.corruptedOnce.contains(pieceIndex)) {
+			if (this.noiseRand.nextInt(100) < this.noiseRate) {
+				this.corruptedOnce.add(pieceIndex); // one-shot per piece so it recovers cleanly
+				return pieceIndex;
+			}
 		}
 		return -1;
 	}
