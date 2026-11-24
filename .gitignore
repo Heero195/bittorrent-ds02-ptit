@@ -4,6 +4,7 @@ bin/
 
 # Runtime Logs
 *.log
+*.log.*
 *.log.lck
 
 # OS generated files
