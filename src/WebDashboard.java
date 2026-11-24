@@ -903,6 +903,10 @@ public class WebDashboard {
             "              matrixTitle.innerText = p === '1002' ? 'Peer 1002 (Leecher + Tiêm lỗi)' : 'Peer 1003 (Leecher Swarm)';\n" +
             "            }\n" +
             "          }\n" +
+            "          const b1001 = document.getElementById('badge1001');\n" +
+            "          const btn1001 = document.getElementById('btn1001');\n" +
+            "          if (b1001) { b1001.className = 'px-2 py-0.5 text-[10px] rounded-full bg-slate-800 text-slate-400'; b1001.innerText = 'Offline'; }\n" +
+            "          if (btn1001) { btn1001.className = 'w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded transition flex items-center justify-center gap-1'; btn1001.innerText = '▶️ Bật Seeder 1001'; }\n" +
             "          const tbody = document.getElementById('eventsBody');\n" +
             "          if (tbody) tbody.innerHTML = '';\n" +
             "          window.corruptTimers = {};\n" +
@@ -953,6 +957,21 @@ public class WebDashboard {
             "      const titleStep = document.getElementById('titleStep' + id);\n" +
             "      const descStep = document.getElementById('descStep' + id);\n" +
             "      const matrixTitle = document.getElementById('matrixTitle' + id);\n" +
+            "\n" +
+            "      if (id === '1001') {\n" +
+            "        if (isRunning) {\n" +
+            "          badge.className = 'px-2 py-0.5 text-[10px] rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold';\n" +
+            "          badge.innerText = '⚡ Seeder (Online)';\n" +
+            "          btn.className = 'w-full py-1.5 bg-slate-800 text-slate-400 text-xs rounded cursor-default';\n" +
+            "          btn.innerText = '✓ Đang chạy';\n" +
+            "        } else {\n" +
+            "          badge.className = 'px-2 py-0.5 text-[10px] rounded-full bg-slate-800 text-slate-400';\n" +
+            "          badge.innerText = 'Offline';\n" +
+            "          btn.className = 'w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded transition flex items-center justify-center gap-1';\n" +
+            "          btn.innerText = '▶️ Bật Seeder 1001';\n" +
+            "        }\n" +
+            "        return;\n" +
+            "      }\n" +
             "\n" +
             "      if (isRunning) {\n" +
             "        if (isComplete) {\n" +
