@@ -94,6 +94,27 @@ public class WebDashboard {
         return list;
     }
 
+    private static List<Integer> getCorruptPieces(String peerId) {
+        List<Integer> list = new ArrayList<>();
+        File logFile = new File("log_peer_" + peerId + ".log");
+        if (!logFile.exists()) return list;
+
+        Pattern pattern = Pattern.compile("detected INVALID/CORRUPT piece \\[(\\d+)\\]");
+        Set<Integer> unique = new HashSet<>();
+        try (BufferedReader br = new BufferedReader(new FileReader(logFile))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                Matcher m = pattern.matcher(line);
+                if (m.find()) {
+                    unique.add(Integer.parseInt(m.group(1)));
+                }
+            }
+        } catch (Exception ignored) {}
+        list.addAll(unique);
+        Collections.sort(list);
+        return list;
+    }
+
     private static class IndexHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -124,7 +145,9 @@ public class WebDashboard {
             long size1003 = f1003.exists() ? f1003.length() : 0;
 
             List<Integer> pieces1002 = getDownloadedPieces("1002");
+            List<Integer> corrupt1002 = getCorruptPieces("1002");
             List<Integer> pieces1003 = getDownloadedPieces("1003");
+            List<Integer> corrupt1003 = getCorruptPieces("1003");
 
             StringBuilder p2Json = new StringBuilder("[");
             for (int i = 0; i < pieces1002.size(); i++) {
@@ -133,6 +156,13 @@ public class WebDashboard {
             }
             p2Json.append("]");
 
+            StringBuilder c2Json = new StringBuilder("[");
+            for (int i = 0; i < corrupt1002.size(); i++) {
+                c2Json.append(corrupt1002.get(i));
+                if (i < corrupt1002.size() - 1) c2Json.append(",");
+            }
+            c2Json.append("]");
+
             StringBuilder p3Json = new StringBuilder("[");
             for (int i = 0; i < pieces1003.size(); i++) {
                 p3Json.append(pieces1003.get(i));
@@ -140,17 +170,24 @@ public class WebDashboard {
             }
             p3Json.append("]");
 
+            StringBuilder c3Json = new StringBuilder("[");
+            for (int i = 0; i < corrupt1003.size(); i++) {
+                c3Json.append(corrupt1003.get(i));
+                if (i < corrupt1003.size() - 1) c3Json.append(",");
+            }
+            c3Json.append("]");
+
             String json = String.format(Locale.US,
                 "{" +
                 "\"tracker\": {\"running\": %b, \"port\": 8888}," +
                 "\"peer1001\": {\"running\": %b, \"size\": %d, \"pieces\": 31, \"complete\": true}," +
-                "\"peer1002\": {\"running\": %b, \"size\": %d, \"pieceCount\": %d, \"pieces\": %s, \"complete\": %b}," +
-                "\"peer1003\": {\"running\": %b, \"size\": %d, \"pieceCount\": %d, \"pieces\": %s, \"complete\": %b}" +
+                "\"peer1002\": {\"running\": %b, \"size\": %d, \"pieceCount\": %d, \"pieces\": %s, \"corrupt\": %s, \"complete\": %b}," +
+                "\"peer1003\": {\"running\": %b, \"size\": %d, \"pieceCount\": %d, \"pieces\": %s, \"corrupt\": %s, \"complete\": %b}" +
                 "}",
                 trackerRunning,
                 peer1001Running, size1001,
-                peer1002Running, size1002, pieces1002.size(), p2Json.toString(), pieces1002.size() >= 31,
-                peer1003Running, size1003, pieces1003.size(), p3Json.toString(), pieces1003.size() >= 31
+                peer1002Running, size1002, pieces1002.size(), p2Json.toString(), c2Json.toString(), pieces1002.size() >= 31,
+                peer1003Running, size1003, pieces1003.size(), p3Json.toString(), c3Json.toString(), pieces1003.size() >= 31
             );
 
             byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
@@ -771,6 +808,7 @@ public class WebDashboard {
             "          }\n" +
             "          const tbody = document.getElementById('eventsBody');\n" +
             "          if (tbody) tbody.innerHTML = '';\n" +
+            "          window.corruptTimers = {};\n" +
             "        }\n" +
             "        setTimeout(pollStatus, 400);\n" +
             "        setTimeout(pollEvents, 500);\n" +
@@ -801,15 +839,15 @@ public class WebDashboard {
             "        updatePeerStatus('1001', data.peer1001.running, 31, true);\n" +
             "\n" +
             "        // Peer 1002\n" +
-            "        updatePeerStatus('1002', data.peer1002.running, data.peer1002.pieceCount, data.peer1002.complete, data.peer1002.pieces);\n" +
+            "        updatePeerStatus('1002', data.peer1002.running, data.peer1002.pieceCount, data.peer1002.complete, data.peer1002.pieces, data.peer1002.corrupt);\n" +
             "\n" +
             "        // Peer 1003\n" +
-            "        updatePeerStatus('1003', data.peer1003.running, data.peer1003.pieceCount, data.peer1003.complete, data.peer1003.pieces);\n" +
+            "        updatePeerStatus('1003', data.peer1003.running, data.peer1003.pieceCount, data.peer1003.complete, data.peer1003.pieces, data.peer1003.corrupt);\n" +
             "\n" +
             "      } catch (e) { console.error(e); }\n" +
             "    }\n" +
             "\n" +
-            "    function updatePeerStatus(id, isRunning, count, isComplete, pieceArray = []) {\n" +
+            "    function updatePeerStatus(id, isRunning, count, isComplete, pieceArray = [], corruptArray = []) {\n" +
             "      const badge = document.getElementById('badge' + id);\n" +
             "      const btn = document.getElementById('btn' + id);\n" +
             "      const txt = document.getElementById('txt' + id);\n" +
@@ -886,13 +924,36 @@ public class WebDashboard {
             "        if (bar) bar.style.width = pct + '%';\n" +
             "\n" +
             "        const set = new Set(pieceArray);\n" +
+            "        const corruptSet = new Set(corruptArray || []);\n" +
+            "\n" +
+            "        if (!window.corruptTimers) window.corruptTimers = {};\n" +
+            "        for (let c of (corruptArray || [])) {\n" +
+            "          if (!window.corruptTimers[`${id}_${c}`]) {\n" +
+            "            window.corruptTimers[`${id}_${c}`] = Date.now();\n" +
+            "          }\n" +
+            "        }\n" +
+            "\n" +
             "        for (let i = 0; i < 31; i++) {\n" +
             "          const box = document.getElementById(`piece_${id}_${i}`);\n" +
             "          if (box) {\n" +
-            "            if (set.has(i)) {\n" +
-            "              box.className = 'piece-box bg-emerald-500';\n" +
+            "            const isCorrupting = corruptSet.has(i);\n" +
+            "            const corruptTime = window.corruptTimers[`${id}_${i}`] || 0;\n" +
+            "            const showCorruptRed = isCorrupting && (!set.has(i) || (Date.now() - corruptTime < 3500));\n" +
+            "\n" +
+            "            if (showCorruptRed) {\n" +
+            "              box.className = 'piece-box bg-rose-500 animate-pulse ring-2 ring-rose-400 shadow-lg shadow-rose-500/80';\n" +
+            "              box.title = `Mảnh #${i}: ⚠️ PHÁT HIỆN MẢNH HỎNG (Sai SHA-256)! Đã từ chối ghi đĩa & đang yêu cầu tải lại.`;\n" +
+            "            } else if (set.has(i)) {\n" +
+            "              if (isCorrupting) {\n" +
+            "                box.className = 'piece-box bg-emerald-500 ring-2 ring-amber-400';\n" +
+            "                box.title = `Mảnh #${i}: ĐÃ TỰ PHỤC HỒI THÀNH CÔNG (Sau khi loại bỏ mảnh lỗi)! Khớp SHA-256 100%`;\n" +
+            "              } else {\n" +
+            "                box.className = 'piece-box bg-emerald-500';\n" +
+            "                box.title = `Mảnh #${i}: Đã tải (Khớp SHA-256)`;\n" +
+            "              }\n" +
             "            } else {\n" +
             "              box.className = 'piece-box bg-slate-800 border border-slate-700/60';\n" +
+            "              box.title = `Mảnh #${i}: Chưa có`;\n" +
             "            }\n" +
             "          }\n" +
             "        }\n" +
@@ -918,8 +979,9 @@ public class WebDashboard {
             "          else if (e.color === 'rose') badgeBg = 'bg-rose-500/20 text-rose-400 border border-rose-500/30';\n" +
             "          else if (e.color === 'amber') badgeBg = 'bg-amber-500/20 text-amber-400 border border-amber-500/30';\n" +
             "\n" +
+            "          let rowBg = e.type === 'CORRUPT_REJECTED' ? 'bg-rose-950/40 border-l-2 border-rose-500' : 'hover:bg-slate-900/80';\n" +
             "          html += `\n" +
-            "            <tr class=\"hover:bg-slate-900/80 transition\">\n" +
+            "            <tr class=\"${rowBg} transition\">\n" +
             "              <td class=\"py-2 px-3 text-slate-400\">${e.time.split(' ')[1] || e.time}</td>\n" +
             "              <td class=\"py-2 px-3\">\n" +
             "                <span class=\"px-1.5 py-0.5 rounded bg-slate-800 text-slate-200 font-bold\">Peer ${e.source}</span>\n" +
