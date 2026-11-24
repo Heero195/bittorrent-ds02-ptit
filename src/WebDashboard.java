@@ -988,6 +988,23 @@ public class WebDashboard {
             "        }\n" +
             "        btn.className = 'w-full py-1.5 bg-slate-800 text-slate-400 text-xs rounded cursor-default';\n" +
             "        btn.innerText = '✓ Đang chạy';\n" +
+            "      } else if (isComplete || count >= 31) {\n" +
+            "        badge.className = 'px-2 py-0.5 text-[10px] rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold';\n" +
+            "        badge.innerText = '⚡ Seeder (Xong 100%)';\n" +
+            "        btn.className = 'w-full py-1.5 bg-slate-800 text-emerald-400 text-xs rounded cursor-default border border-emerald-500/20 flex items-center justify-center gap-1';\n" +
+            "        btn.innerText = '✓ Đã hoàn tất 100%';\n" +
+            "        if (titleStep) {\n" +
+            "          titleStep.className = 'text-[11px] font-bold text-emerald-400';\n" +
+            "          titleStep.innerText = `BƯỚC ${id === '1002' ? '3' : '4'}: SEEDER ${id} (XONG)`;\n" +
+            "        }\n" +
+            "        if (descStep) {\n" +
+            "          descStep.className = 'text-[11px] text-emerald-300 font-medium mt-0.5';\n" +
+            "          descStep.innerText = '🌟 ĐÃ LÀ SEEDER: Toàn bộ 31/31 mảnh nguyên vẹn!';\n" +
+            "        }\n" +
+            "        if (matrixTitle) {\n" +
+            "          matrixTitle.className = 'text-xs font-bold text-emerald-400 flex items-center gap-1.5';\n" +
+            "          matrixTitle.innerHTML = `Peer ${id} <span class=\"px-1.5 py-0.2 rounded text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold\">⚡ SEEDER</span>`;\n" +
+            "        }\n" +
             "      } else {\n" +
             "        badge.className = 'px-2 py-0.5 text-[10px] rounded-full bg-slate-800 text-slate-400';\n" +
             "        badge.innerText = 'Offline';\n" +
