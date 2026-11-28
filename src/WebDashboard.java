@@ -754,7 +754,7 @@ public class WebDashboard {
             "              <span id=\"titleStep1002\" class=\"text-[11px] font-bold text-amber-400\">BƯỚC 3: LEECHER 1002</span>\n" +
             "              <span id=\"badge1002\" class=\"px-2 py-0.5 text-[10px] rounded-full bg-slate-800 text-slate-400\">Offline</span>\n" +
             "            </div>\n" +
-            "            <div class=\"text-xs font-semibold text-white mt-1\">Tiêm lỗi mảnh #2</div>\n" +
+            "            <div id=\"subStep1002\" class=\"text-xs font-semibold text-white mt-1\">Tiêm lỗi mảnh #2</div>\n" +
             "            <p id=\"descStep1002\" class=\"text-[11px] text-slate-400 mt-0.5\">Tải từ 1001, tự phát hiện & phục hồi lỗi.</p>\n" +
             "          </div>\n" +
             "          <button id=\"btn1002\" onclick=\"callAction('start_1002')\" class=\"w-full py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-medium text-xs rounded transition flex items-center justify-center gap-1\">\n" +
@@ -769,7 +769,7 @@ public class WebDashboard {
             "              <span id=\"titleStep1003\" class=\"text-[11px] font-bold text-cyan-400\">BƯỚC 4: LEECHER 1003</span>\n" +
             "              <span id=\"badge1003\" class=\"px-2 py-0.5 text-[10px] rounded-full bg-slate-800 text-slate-400\">Offline</span>\n" +
             "            </div>\n" +
-            "            <div class=\"text-xs font-semibold text-white mt-1\">Tải chéo đa nguồn</div>\n" +
+            "            <div id=\"subStep1003\" class=\"text-xs font-semibold text-white mt-1\">Tải chéo đa nguồn</div>\n" +
             "            <p id=\"descStep1003\" class=\"text-[11px] text-slate-400 mt-0.5\">Tải từ cả 1001 và 1002 (Tit-for-Tat).</p>\n" +
             "          </div>\n" +
             "          <button id=\"btn1003\" onclick=\"callAction('start_1003')\" class=\"w-full py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs rounded transition flex items-center justify-center gap-1\">\n" +
@@ -883,8 +883,53 @@ public class WebDashboard {
             "    let currentScenario = 'default';\n" +
             "    let cfg1002 = { corrupt: '2', noise: '0' };\n" +
             "    let cfg1003 = { corrupt: '', noise: '0' };\n" +
+            "    window.lastStatusData = null;\n" +
             "\n" +
-            "    function applyScenario(sc) {\n" +
+            "    const SCENARIOS = {\n" +
+            "      clean: {\n" +
+            "        c1002: { corrupt: '', noise: '0' },\n" +
+            "        c1003: { corrupt: '', noise: '0' },\n" +
+            "        sub1002: 'Mạng sạch (Lỗi: 0%)',\n" +
+            "        desc1002: 'Đường truyền lý tưởng, không có lỗi.',\n" +
+            "        matrix1002: 'Peer 1002 (Leecher - Mạng sạch)',\n" +
+            "        sub1003: 'Tải chéo mượt mà (Lỗi: 0%)',\n" +
+            "        desc1003: 'Tải chéo từ cả 1001 và 1002 không lỗi.',\n" +
+            "        matrix1003: 'Peer 1003 (Leecher - Mạng sạch)'\n" +
+            "      },\n" +
+            "      default: {\n" +
+            "        c1002: { corrupt: '2', noise: '0' },\n" +
+            "        c1003: { corrupt: '', noise: '0' },\n" +
+            "        sub1002: 'Tiêm lỗi mảnh #2',\n" +
+            "        desc1002: 'Tải từ 1001, tự phát hiện & phục hồi lỗi.',\n" +
+            "        matrix1002: 'Peer 1002 (Leecher + Tiêm lỗi #2)',\n" +
+            "        sub1003: 'Tải chéo đa nguồn',\n" +
+            "        desc1003: 'Tải từ cả 1001 và 1002 (Tit-for-Tat).',\n" +
+            "        matrix1003: 'Peer 1003 (Leecher Swarm)'\n" +
+            "      },\n" +
+            "      both_error: {\n" +
+            "        c1002: { corrupt: '2', noise: '0' },\n" +
+            "        c1003: { corrupt: '5', noise: '0' },\n" +
+            "        sub1002: 'Tiêm lỗi mảnh #2',\n" +
+            "        desc1002: 'Tải từ 1001, tự phát hiện & phục hồi lỗi.',\n" +
+            "        matrix1002: 'Peer 1002 (Leecher + Tiêm lỗi #2)',\n" +
+            "        sub1003: 'Tiêm lỗi mảnh #5',\n" +
+            "        desc1003: 'Tải chéo & tự phục hồi lỗi mảnh #5!',\n" +
+            "        matrix1003: 'Peer 1003 (Leecher + Tiêm lỗi #5)'\n" +
+            "      },\n" +
+            "      noise: {\n" +
+            "        c1002: { corrupt: '', noise: '15' },\n" +
+            "        c1003: { corrupt: '', noise: '15' },\n" +
+            "        sub1002: 'Nhiễu ngẫu nhiên 15%',\n" +
+            "        desc1002: 'Lúc lỗi lúc bình thường (Nhiễu 15%).',\n" +
+            "        matrix1002: 'Peer 1002 (Leecher + Nhiễu 15%)',\n" +
+            "        sub1003: 'Nhiễu ngẫu nhiên 15%',\n" +
+            "        desc1003: 'Lúc lỗi lúc bình thường (Nhiễu 15%).',\n" +
+            "        matrix1003: 'Peer 1003 (Leecher + Nhiễu 15%)'\n" +
+            "      }\n" +
+            "    };\n" +
+            "\n" +
+            "    async function applyScenario(sc, skipReset = false) {\n" +
+            "      const prevScenario = currentScenario;\n" +
             "      currentScenario = sc;\n" +
             "      const ids = ['clean', 'default', 'both_error', 'noise'];\n" +
             "      for (let id of ids) {\n" +
@@ -897,28 +942,28 @@ public class WebDashboard {
             "          }\n" +
             "        }\n" +
             "      }\n" +
+            "      const s = SCENARIOS[sc] || SCENARIOS.default;\n" +
+            "      cfg1002 = s.c1002;\n" +
+            "      cfg1003 = s.c1003;\n" +
+            "      const sub1002 = document.getElementById('subStep1002');\n" +
+            "      const sub1003 = document.getElementById('subStep1003');\n" +
             "      const desc1002 = document.getElementById('descStep1002');\n" +
             "      const desc1003 = document.getElementById('descStep1003');\n" +
-            "      if (sc === 'clean') {\n" +
-            "        cfg1002 = { corrupt: '', noise: '0' };\n" +
-            "        cfg1003 = { corrupt: '', noise: '0' };\n" +
-            "        if (desc1002) desc1002.innerText = 'Đường truyền lý tưởng, không có lỗi.';\n" +
-            "        if (desc1003) desc1003.innerText = 'Tải chéo từ cả 1001 và 1002 không lỗi.';\n" +
-            "      } else if (sc === 'default') {\n" +
-            "        cfg1002 = { corrupt: '2', noise: '0' };\n" +
-            "        cfg1003 = { corrupt: '', noise: '0' };\n" +
-            "        if (desc1002) desc1002.innerText = 'Tiêm lỗi mảnh #2, tự phát hiện & phục hồi lỗi.';\n" +
-            "        if (desc1003) desc1003.innerText = 'Tải chéo đa nguồn từ cả 1001 và 1002.';\n" +
-            "      } else if (sc === 'both_error') {\n" +
-            "        cfg1002 = { corrupt: '2', noise: '0' };\n" +
-            "        cfg1003 = { corrupt: '5', noise: '0' };\n" +
-            "        if (desc1002) desc1002.innerText = 'Tiêm lỗi mảnh #2, tự phát hiện & phục hồi lỗi.';\n" +
-            "        if (desc1003) desc1003.innerText = 'Tiêm lỗi mảnh #5, tự phát hiện & phục hồi lỗi!';\n" +
-            "      } else if (sc === 'noise') {\n" +
-            "        cfg1002 = { corrupt: '', noise: '15' };\n" +
-            "        cfg1003 = { corrupt: '', noise: '15' };\n" +
-            "        if (desc1002) desc1002.innerText = 'Nhiễu ngẫu nhiên 15% (Lúc lỗi lúc bình thường).';\n" +
-            "        if (desc1003) desc1003.innerText = 'Nhiễu ngẫu nhiên 15% (Lúc lỗi lúc bình thường).';\n" +
+            "      const mat1002 = document.getElementById('matrixTitle1002');\n" +
+            "      const mat1003 = document.getElementById('matrixTitle1003');\n" +
+            "      if (sub1002) sub1002.innerText = s.sub1002;\n" +
+            "      if (sub1003) sub1003.innerText = s.sub1003;\n" +
+            "      if (desc1002) desc1002.innerText = s.desc1002;\n" +
+            "      if (desc1003) desc1003.innerText = s.desc1003;\n" +
+            "      if (mat1002) mat1002.innerText = s.matrix1002;\n" +
+            "      if (mat1003) mat1003.innerText = s.matrix1003;\n" +
+            "\n" +
+            "      if (!skipReset && prevScenario !== sc && window.lastStatusData) {\n" +
+            "        const d = window.lastStatusData;\n" +
+            "        const hasWork = d.peer1002.running || d.peer1003.running || d.peer1002.pieceCount > 0 || d.peer1003.pieceCount > 0;\n" +
+            "        if (hasWork) {\n" +
+            "          await callAction('clean');\n" +
+            "        }\n" +
             "      }\n" +
             "    }\n" +
             "\n" +
@@ -932,7 +977,8 @@ public class WebDashboard {
             "        }\n" +
             "        await fetch(url);\n" +
             "        if (cmd === 'clean') {\n" +
-            "          applyScenario(currentScenario);\n" +
+            "          await applyScenario(currentScenario, true);\n" +
+            "          const scInfo = SCENARIOS[currentScenario] || SCENARIOS.default;\n" +
             "          const b = document.getElementById('hashBanner');\n" +
             "          if (b) { b.className = 'hidden rounded-xl p-4 border transition-all'; b.innerHTML = ''; }\n" +
             "          for (let p of ['1002', '1003']) {\n" +
@@ -953,11 +999,11 @@ public class WebDashboard {
             "            }\n" +
             "            if (descStep) {\n" +
             "              descStep.className = 'text-[11px] text-slate-400 mt-0.5';\n" +
-            "              descStep.innerText = p === '1002' ? 'Tải từ 1001, tự phát hiện & phục hồi lỗi.' : 'Tải từ cả 1001 và 1002 (Tit-for-Tat).';\n" +
+            "              descStep.innerText = p === '1002' ? scInfo.desc1002 : scInfo.desc1003;\n" +
             "            }\n" +
             "            if (matrixTitle) {\n" +
             "              matrixTitle.className = p === '1002' ? 'text-xs font-bold text-amber-400' : 'text-xs font-bold text-cyan-400';\n" +
-            "              matrixTitle.innerText = p === '1002' ? 'Peer 1002 (Leecher + Tiêm lỗi)' : 'Peer 1003 (Leecher Swarm)';\n" +
+            "              matrixTitle.innerText = p === '1002' ? scInfo.matrix1002 : scInfo.matrix1003;\n" +
             "            }\n" +
             "          }\n" +
             "          const b1001 = document.getElementById('badge1001');\n" +
@@ -981,6 +1027,7 @@ public class WebDashboard {
             "      try {\n" +
             "        const res = await fetch('/api/status');\n" +
             "        const data = await res.json();\n" +
+            "        window.lastStatusData = data;\n" +
             "\n" +
             "        // Tracker badge\n" +
             "        const tb = document.getElementById('badgeTracker');\n" +
@@ -1057,13 +1104,14 @@ public class WebDashboard {
             "            titleStep.className = id === '1002' ? 'text-[11px] font-bold text-amber-400' : 'text-[11px] font-bold text-cyan-400';\n" +
             "            titleStep.innerText = `BƯỚC ${id === '1002' ? '3' : '4'}: LEECHER ${id}`;\n" +
             "          }\n" +
+            "          const scInfo = SCENARIOS[currentScenario] || SCENARIOS.default;\n" +
             "          if (descStep) {\n" +
             "            descStep.className = 'text-[11px] text-slate-400 mt-0.5';\n" +
-            "            descStep.innerText = id === '1002' ? 'Tải từ 1001, tự phát hiện & phục hồi lỗi.' : 'Tải từ cả 1001 và 1002 (Tit-for-Tat).';\n" +
+            "            descStep.innerText = id === '1002' ? scInfo.desc1002 : scInfo.desc1003;\n" +
             "          }\n" +
             "          if (matrixTitle) {\n" +
             "            matrixTitle.className = id === '1002' ? 'text-xs font-bold text-amber-400' : 'text-xs font-bold text-cyan-400';\n" +
-            "            matrixTitle.innerText = id === '1002' ? 'Peer 1002 (Leecher + Tiêm lỗi)' : 'Peer 1003 (Leecher Swarm)';\n" +
+            "            matrixTitle.innerText = id === '1002' ? scInfo.matrix1002 : scInfo.matrix1003;\n" +
             "          }\n" +
             "        }\n" +
             "        btn.className = 'w-full py-1.5 bg-slate-800 text-slate-400 text-xs rounded cursor-default';\n" +
@@ -1092,13 +1140,14 @@ public class WebDashboard {
             "          titleStep.className = id === '1002' ? 'text-[11px] font-bold text-amber-400' : (id === '1003' ? 'text-[11px] font-bold text-cyan-400' : 'text-[11px] font-bold text-emerald-400');\n" +
             "          titleStep.innerText = id === '1001' ? 'BƯỚC 2: SEEDER 1001' : (id === '1002' ? 'BƯỚC 3: LEECHER 1002' : 'BƯỚC 4: LEECHER 1003');\n" +
             "        }\n" +
+            "        const scInfo = SCENARIOS[currentScenario] || SCENARIOS.default;\n" +
             "        if (descStep) {\n" +
             "          descStep.className = 'text-[11px] text-slate-400 mt-0.5';\n" +
-            "          descStep.innerText = id === '1002' ? 'Tải từ 1001, tự phát hiện & phục hồi lỗi.' : 'Tải từ cả 1001 và 1002 (Tit-for-Tat).';\n" +
+            "          descStep.innerText = id === '1002' ? scInfo.desc1002 : scInfo.desc1003;\n" +
             "        }\n" +
             "        if (matrixTitle) {\n" +
             "          matrixTitle.className = id === '1002' ? 'text-xs font-bold text-amber-400' : 'text-xs font-bold text-cyan-400';\n" +
-            "          matrixTitle.innerText = id === '1002' ? 'Peer 1002 (Leecher + Tiêm lỗi)' : 'Peer 1003 (Leecher Swarm)';\n" +
+            "          matrixTitle.innerText = id === '1002' ? scInfo.matrix1002 : scInfo.matrix1003;\n" +
             "        }\n" +
             "        if (id === '1001') {\n" +
             "          btn.className = 'w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded transition flex items-center justify-center gap-1';\n" +
